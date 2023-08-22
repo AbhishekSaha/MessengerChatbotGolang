@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/carlmjohnson/requests"
 	"github.com/ybbus/httpretry"
+	"log"
 )
 
 const (
@@ -18,6 +19,7 @@ const (
 	baseEndpoint         = FB_API_ENDPOINT + API_SEPARATOR + LATEST_API_VERSION + API_SEPARATOR + FB_PAGE_ID + API_SEPARATOR + MESSAGES_API_NAME
 )
 
+// Sends a message to the User via Messenger Chat on Facebook Page
 func sendMessage(message string, customerId string, messageType string) error {
 	customerIdMap := make(map[string]string)
 	customerIdMap["id"] = customerId
@@ -27,19 +29,22 @@ func sendMessage(message string, customerId string, messageType string) error {
 	messageMap["text"] = message
 	var messageMapJSON, _messageErr = json.Marshal(&messageMap)
 
-	if _customerIdErr == nil || _messageErr == nil {
+	if _customerIdErr != nil || _messageErr != nil {
 		return errors.New("JSON serialization error")
 	}
 
 	cl := httpretry.NewDefaultClient() //Used for retries
-	var err = requests.
+	var requestUrl, err = requests.
 		URL(baseEndpoint).
 		Param("access_token", FB_PAGE_ACCESS_TOKEN).
 		Param("recipient", string(customerIdJSON)).
 		Param("message", string(messageMapJSON)).
 		Param("message_type", messageType).
-		Client(cl).
-		Fetch(context.Background())
+		URL()
 
-	return err
+	if err != nil {
+		log.Fatal("Error when creating SendRequest URL.\n" + err.Error())
+	}
+
+	return requests.URL(requestUrl.String()).Client(cl).Fetch(context.Background())
 }
